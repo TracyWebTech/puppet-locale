@@ -1,15 +1,31 @@
 class locale (
-  $locales  = 'en_US.UTF-8',
+  $locales  = 'en_US.UTF-8 pt_BR',
   $lang     = 'en_US.UTF-8',
   $language = 'en_US'
 ) {
 
   Exec {
-    path => ['/usr/sbin', '/bin', '/usr/bin']
+    path => ['/usr/bin', '/usr/sbin', '/bin']
+  }
+
+  file { '/var/cache/locale':
+    ensure => directory,
+    mode   => '0755',
+    owner  => 'root',
+  }
+
+  file { '/var/cache/locale/installed':
+    ensure  => present,
+    mode    => '0644',
+    owner   => 'root',
+    content => "${locales}-${lang}-${language}",
+    require => File['/var/cache/locale'],
   }
 
   exec { 'install_locales':
     command => "locale-gen ${locales}",
+    refreshonly => true,
+    subscribe   => File['/var/cache/locale/installed'],
     notify  => Exec['reload_locales']
   }
 
@@ -17,7 +33,8 @@ class locale (
     exec { 'update_default_lang':
       command => "update-locale LANG='${lang}'",
       notify  => Exec['reload_locales'],
-      unless  => "locale | grep -e ^LANG=${lang}\$"
+      refreshonly => true,
+      subscribe   => File['/var/cache/locale/installed'],
     }
   }
 
@@ -25,7 +42,8 @@ class locale (
     exec { 'update_default_language':
       command => "update-locale LANGUAGE='${language}'",
       notify  => Exec['reload_locales'],
-      unless  => "locale | grep -e ^LANGUAGE=${language}\$"
+      refreshonly => true,
+      subscribe   => File['/var/cache/locale/installed'],
     }
   }
 
